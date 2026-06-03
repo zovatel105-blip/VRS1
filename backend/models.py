@@ -579,6 +579,7 @@ class PollResponse(BaseModel):
     # generado por FFmpeg en background al publicar el VS. El frontend lo
     # reproduce como un único <video> mientras el usuario no ha votado.
     composed_video_url: Optional[str] = None
+    composed_hls_url: Optional[str] = None  # 🚀 HLS ABR del compuesto (arranque instantáneo + adaptación a la red)
     composed_status: Optional[str] = None  # 'pending'|'processing'|'ready'|'failed'|'not_applicable'
     composed_orientation: Optional[str] = None  # snapshot de vs_orientation al componer
     created_at: datetime

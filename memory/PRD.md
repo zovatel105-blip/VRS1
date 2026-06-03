@@ -103,3 +103,13 @@
 - `gestureStartRef` se limpia en touchend/mouseup/leave para no arrastrar estado entre gestures.
 - Tras rasterizar, `media.transform` se pone en `null` para no re-aplicarlo.
 - En VS el rasterizado usa `vsCellSize` (vertical=lado-a-lado, horizontal=arriba/abajo).
+
+### Sesión Jun 2026 — VS instantáneo/adaptativo (HLS) + fix de arranque
+**Bug crítico de arranque:** faltaban `frontend/.env` y `backend/.env` (gitignored, se perdieron al restaurar el working tree). Sin `REACT_APP_BACKEND_URL` el front llamaba a `undefined/api/...` → recibía `index.html` → "Unexpected token '<' ... is not valid JSON". Recreados ambos `.env` (URL del preview + Mongo defaults). Añadido `ESLINT_NO_DEV_ERRORS=true` (errores eslint preexistentes bloqueaban el overlay dev). Fix import `User` en `MessagesMainPage.jsx`.
+
+**VS no adaptativo (causa raíz múltiple):**
+1. `create_vs_experience` crasheaba (`'VSOption' object has no attribute 'get'`) → el pipeline de optimización NUNCA se encolaba. Fix: detección `_vsopt_is_video` por atributos Pydantic.
+2. `process_poll_media` sólo escribía HLS en `poll.options`, no en `vs_questions[].options[]` (lo que renderiza el feed VS). Fix: nueva `_process_vs_questions_media` que transcodifica/escribe HLS+optimized+thumb en TODAS las preguntas (polls + vs_experiences).
+3. Colisión de assets: los `option_id` VS son 'a'/'b' (no únicos) → archivos `/hls/a` se sobreescribían entre posts/preguntas. Fix: `_asset_key(poll_id, question_id, option_id)`. Backfill genérico excluye `layout=vs`.
+4. Vista PRE-VOTO (`VSComposedOverlay`) usaba `<video src=mp4>` plano (no adaptativo). Fix: `compose_vs_video_task` ahora genera `composed_hls_url`; `VSComposedOverlay` usa `<HlsVideo>` (HLS ABR 360/540/720 + fallback MP4). Campo expuesto en `/vs/{id}`, feed (`PollResponse.composed_hls_url`) y modelo.
+- ffmpeg confirmado instalado (5.1.9). Scripts: `scripts/reprocess_vs.py`, `scripts/recompose_vs.py`. Los 2 VS existentes reprocesados con claves únicas + composed HLS (verificado: master.m3u8 sirve HTTP 200 con 3 renditions).

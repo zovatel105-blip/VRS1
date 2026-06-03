@@ -6,6 +6,7 @@ import voiceService from '../../services/voiceService';
 import DoubleTapVoteAnimation, { TWYK_GRADIENTS } from '../DoubleTapVoteAnimation';
 import SafeImage from '../common/SafeImage';
 import PollOptionMedia from '../common/PollOptionMedia';
+import HlsVideo from '../common/HlsVideo';
 import resolveAssetUrl from '../../utils/resolveAssetUrl';
 import { isVideoOption } from '../../utils/vsMedia';
 import VSWinnerCard from './VSWinnerCard';
@@ -568,7 +569,7 @@ const resolveBackendUrl = (url) => {
 //   - Audio: lo emite el MP4 compuesto (lado A original; B silenciado por
 //     FFmpeg). NO va muted — es el audio principal del feed mientras dura.
 //   - playsInline, autoPlay, loop → mismo comportamiento que TikTok.
-const VSComposedOverlay = ({ src, visible, isActive }) => {
+const VSComposedOverlay = ({ src, hlsSrc, visible, isActive }) => {
   const videoRef = useRef(null);
   // Mantenemos el <video> montado mientras "renderable" sea true, aunque
   // visible (opacity) baje a 0 — así no perdemos buffer cuando el usuario
@@ -612,15 +613,18 @@ const VSComposedOverlay = ({ src, visible, isActive }) => {
         zIndex: 8,
       }}
     >
-      <video
+      {/* 🚀 HlsVideo: si hay composed_hls_url reproduce HLS ABR (arranque en
+          360p sub-segundo + adaptación a la red, estilo TikTok); si no, cae al
+          MP4 compuesto. El audio sale del lado A (FFmpeg map 0:a?). NO va muted. */}
+      <HlsVideo
         ref={videoRef}
-        src={src}
+        hlsUrl={hlsSrc || null}
+        mp4Url={src}
         className="w-full h-full object-cover"
         playsInline
         loop
         preload="auto"
         autoPlay={isActive && visible}
-        // El audio sale del lado A (FFmpeg map 0:a?). NO va muted.
         // eslint-disable-next-line react/no-unknown-property
         webkit-playsinline="true"
         // eslint-disable-next-line react/no-unknown-property
@@ -1471,6 +1475,7 @@ const VSLayout = ({
   // con el comportamiento previo (PollOptionMedia individual por lado).
   const [composedInfo, setComposedInfo] = useState({
     url: poll?.composed_video_url || null,
+    hlsUrl: poll?.composed_hls_url || null,
     status: poll?.composed_status || null,
     orientation: poll?.composed_orientation || poll?.vs_orientation || null,
   });
@@ -1568,6 +1573,7 @@ const VSLayout = ({
         if (data?.composed_status || data?.composed_video_url) {
           setComposedInfo({
             url: data.composed_video_url || null,
+            hlsUrl: data.composed_hls_url || null,
             status: data.composed_status || null,
             orientation: data.composed_orientation || poll?.vs_orientation || null,
           });
@@ -2135,6 +2141,7 @@ const VSLayout = ({
               {qIndex === 0 && composedReady && currentIndex === 0 && (
                 <VSComposedOverlay
                   src={resolveBackendUrl(composedInfo.url)}
+                  hlsSrc={composedInfo.hlsUrl ? resolveBackendUrl(composedInfo.hlsUrl) : null}
                   visible={composedActive}
                   isActive={qIndex === currentIndex && isActive}
                 />

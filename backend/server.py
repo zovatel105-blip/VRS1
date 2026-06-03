@@ -6652,6 +6652,7 @@ async def get_polls(
             creator_country=poll_data.get("creator_country"),  # Country where VS was created
             vs_orientation=poll_data.get("vs_orientation", "horizontal"),  # VS orientation: 'vertical' or 'horizontal'
             composed_video_url=poll_data.get("composed_video_url"),
+            composed_hls_url=poll_data.get("composed_hls_url"),
             composed_status=poll_data.get("composed_status"),
             composed_orientation=poll_data.get("composed_orientation"),
             created_at=poll_data["created_at"],
@@ -7498,6 +7499,7 @@ async def get_battle_polls(
             creator_country=poll_data.get("creator_country"),
             vs_orientation=poll_data.get("vs_orientation", "horizontal"),
             composed_video_url=poll_data.get("composed_video_url"),
+            composed_hls_url=poll_data.get("composed_hls_url"),
             composed_status=poll_data.get("composed_status"),
             composed_orientation=poll_data.get("composed_orientation"),
         )
@@ -7741,6 +7743,7 @@ async def get_following_polls(
             creator_country=poll_data.get("creator_country"),
             vs_orientation=poll_data.get("vs_orientation", "horizontal"),
             composed_video_url=poll_data.get("composed_video_url"),
+            composed_hls_url=poll_data.get("composed_hls_url"),
             composed_status=poll_data.get("composed_status"),
             composed_orientation=poll_data.get("composed_orientation"),
             created_at=poll_data["created_at"],
@@ -8398,6 +8401,7 @@ async def get_user_mentioned_polls(
                 creator_country=poll_data.get("creator_country"),
                 vs_orientation=poll_data.get("vs_orientation", "horizontal"),
                 composed_video_url=poll_data.get("composed_video_url"),
+            composed_hls_url=poll_data.get("composed_hls_url"),
                 composed_status=poll_data.get("composed_status"),
                 composed_orientation=poll_data.get("composed_orientation"),
                 # Post settings
@@ -9362,6 +9366,7 @@ async def get_poll_by_id(
         creator_country=poll.get("creator_country"),
         vs_orientation=poll.get("vs_orientation", "horizontal"),
         composed_video_url=poll.get("composed_video_url"),
+        composed_hls_url=poll.get("composed_hls_url"),
         composed_status=poll.get("composed_status"),
         composed_orientation=poll.get("composed_orientation"),
         created_at=poll["created_at"],
@@ -10348,6 +10353,7 @@ async def get_posts_using_audio(
                     vs_questions=poll_data.get("vs_questions", []),
                     vs_orientation=poll_data.get("vs_orientation", "horizontal"),
                     composed_video_url=poll_data.get("composed_video_url"),
+            composed_hls_url=poll_data.get("composed_hls_url"),
                     composed_status=poll_data.get("composed_status"),
                     composed_orientation=poll_data.get("composed_orientation"),
                     creator_country=poll_data.get("creator_country"),
@@ -13690,8 +13696,20 @@ async def create_vs_experience(
         # El status arranca en "processing" y termina en "ready" cuando
         # la validación + thumbnails básicos terminen (~3s).
         try:
+            def _vsopt_is_video(opt) -> bool:
+                # `opt` es un objeto Pydantic VSOption (NO un dict). Sus campos
+                # son `image` (URL del media) y `media_type`. Detectamos vídeo
+                # por media_type declarado o por extensión de la URL.
+                mt = (getattr(opt, "media_type", None) or "").strip().lower()
+                img = getattr(opt, "image", None)
+                if not img:
+                    return False
+                if "video" in mt:
+                    return True
+                return bool(re.search(r"\.(mp4|mov|webm|avi|m4v|mkv)(\?|$)", str(img), re.IGNORECASE))
+
             has_video = any(
-                opt.get("media_type") == "video" and opt.get("media_url")
+                _vsopt_is_video(opt)
                 for q in vs_data.questions for opt in q.options
             )
             if has_video:
@@ -13768,6 +13786,7 @@ async def get_vs_experience(
             # 🎬 VS Composed (TikTok Duet) — el frontend usa estos campos
             # para decidir si reproducir MP4 compuesto en lugar de 2 streams.
             "composed_video_url": vs_doc.get("composed_video_url"),
+            "composed_hls_url": vs_doc.get("composed_hls_url"),
             "composed_status": vs_doc.get("composed_status"),
             "composed_orientation": vs_doc.get("composed_orientation"),
         }
