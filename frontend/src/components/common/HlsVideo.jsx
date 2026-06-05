@@ -73,7 +73,7 @@ const DEFAULT_HLS_CONFIG = {
 };
 
 const HlsVideo = forwardRef(
-  ({ hlsUrl, mp4Url, hlsConfig, onHlsError, maxHeightCap = null, ...videoProps }, ref) => {
+  ({ hlsUrl, mp4Url, hlsConfig, onHlsError, maxHeightCap = null, distanceFromActive = 0, ...videoProps }, ref) => {
     const videoRef = useRef(null);
     // 🚀 FIX BOTTLENECK #2: persistimos la instancia HLS entre re-renders.
     // Antes destruíamos y recreábamos en cada cambio de src → 50-100ms por
@@ -206,6 +206,14 @@ const HlsVideo = forwardRef(
 
       return undefined; // cleanup global en el siguiente useEffect
     }, [hlsUrl, mp4Url, maxHeightCap]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (distanceFromActive !== 0) return undefined;
+    const hls = hlsRef.current;
+    if (!hls) return undefined;
+    try { hls.startLoad(); } catch (_) {}
+    return undefined;
+  }, [distanceFromActive]);
 
     // Cleanup ÚNICAMENTE en el unmount real del componente.
     // Esto es lo que permite el recycling: el useEffect de arriba YA NO

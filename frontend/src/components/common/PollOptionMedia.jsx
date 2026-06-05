@@ -190,7 +190,9 @@ const PollOptionMedia = ({
 
   // Reset cuando cambian las URLs
   useEffect(() => {
-    if (videoSrc) {
+    if (videoSrc && lastVideoSrcRef.current !== videoSrc) {
+      lastVideoSrcRef.current = videoSrc;
+      everHadFrameRef.current = false;
       setVideoStatus('loading');
       setIsBuffered(false);
       setHasFirstFrame(false);
@@ -299,6 +301,8 @@ const PollOptionMedia = ({
   //
   // Solo se hace UNA VEZ por carga de URL — evitamos re-disparos.
   const warmedRef = useRef(null);
+  const everHadFrameRef = useRef(false);
+  const lastVideoSrcRef = useRef(null);
   useEffect(() => {
     if (!isVideo) return;
     if (distanceFromActive !== 1) return;
@@ -571,6 +575,7 @@ const PollOptionMedia = ({
           ref={videoEl}
           hlsUrl={hlsSrcForPlayer}
           mp4Url={mp4SrcForPlayer}
+          distanceFromActive={distanceFromActive}
           // 🚀 FIX GAP #3 (VS bitrate cap): en layout VS el <video> ocupa
           // ~mitad de pantalla; pedir 1080p en cada lado es desperdicio.
           // Cap a 720p → ~40% menos bytes y ~50% menos tiempo de decode
