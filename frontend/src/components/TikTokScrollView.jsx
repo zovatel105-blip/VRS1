@@ -2078,16 +2078,17 @@ const TikTokScrollView = ({
     setIsTransitioning(true);
     setTranslateOffset(targetOffset);
 
+    setActiveIndex(newIndex);
+    setLastActiveIndex(newIndex);
+    eagerPrefetchedIndexRef.current = -1;
+
+    if (typeof onActiveIndexChange === 'function') {
+      try { onActiveIndexChange(newIndex); } catch (_) {}
+    }
+
     setTimeout(() => {
       setIsTransitioning(false);
       setTranslateOffset(0);
-      setActiveIndex(newIndex);
-      setLastActiveIndex(newIndex);
-
-      if (typeof onActiveIndexChange === 'function') {
-        try { onActiveIndexChange(newIndex); } catch (_) {}
-      }
-
       isAnimatingRef.current = false;
     }, transMs);
   }, [activeIndex, polls.length, onSwipeStart, onActiveIndexChange, showScrollHint, onLoadMore, hasMoreContent, isLoadingMore]);
@@ -2794,20 +2795,25 @@ const TikTokScrollView = ({
   }
 
   // ─── SHARED CARD PROPS ────────────────────────────────────────────────────
-  const sharedCardProps = {
+  const sharedCardProps = useMemo(() => ({
     onVote, onLike, onShare, onComment, onSave, onCreatePoll,
     showLogo, onUpdatePoll, onDeletePoll, isOwnProfile,
     currentUser, savedPolls, setSavedPolls,
     commentedPolls, setCommentedPolls, sharedPolls, setSharedPolls,
     isHighBandwidth, onModalStateChange: setIsModalOpen,
     fromAudioDetailPage, currentAudio,
-  };
+  }), [
+    onVote, onLike, onShare, onComment, onSave, onCreatePoll,
+    showLogo, onUpdatePoll, onDeletePoll, isOwnProfile,
+    currentUser, savedPolls, commentedPolls, sharedPolls,
+    isHighBandwidth, fromAudioDetailPage, currentAudio,
+  ]);
 
-  const slots = [
+  const slots = useMemo(() => [
     { poll: slotPolls[SLOT_PREV], slotIndex: SLOT_PREV, pollIndex: activeIndex - 1 },
     { poll: slotPolls[SLOT_CUR],  slotIndex: SLOT_CUR,  pollIndex: activeIndex },
     { poll: slotPolls[SLOT_NEXT], slotIndex: SLOT_NEXT, pollIndex: activeIndex + 1 },
-  ];
+  ], [slotPolls, activeIndex]);
 
   return (
     <div
